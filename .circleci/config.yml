@@ -130,8 +130,12 @@ workflows:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
+      - approve-test:
+          type: approval
       - test:
           context: swoole-bundle-releaser
+          requires:
+            - approve-test
       - validate-commit-message
       - shellcheck
       - docker-bake:
