@@ -11,16 +11,21 @@ aliases:
     setup_remote_docker:
       # https://circleci.com/docs/2.0/building-docker-images/#docker-version
       version: 19.03.12
+      
+    # Filters
+  - &filter-run-on-local-branches
+    filters:
+      branches:
+        # Forked pull requests have CIRCLE_BRANCH set to pull/XXX
+        ignore: /pull\/[0-9]+/
+
+  - &filter-run-on-forked-pull-requests
+    filters:
+      branches:
+        # Forked pull requests have CIRCLE_BRANCH set to pull/XXX
+        only: /pull\/[0-9]+/
 
 jobs:
-  shellcheck:
-    docker:
-      - image: koalaman/shellcheck-alpine:stable
-    steps:
-      - checkout
-      - run:
-          name: Shellcheck sh scripts
-          command: shellcheck *.sh
   test:
     docker:
       - image: alpine
@@ -32,24 +37,7 @@ jobs:
       - run:
           name: Test 2
           command: echo -n "$GH_TOKEN" | base64
-
-  validate-commit-message:
-    docker:
-      - image: node:lts-alpine
-    steps:
-      - checkout
-      - run:
-          name: Install git
-          command: apk add --no-cache git
-      - run:
-          name: Install commitlint
-          command: |-
-            npm config set unsafe-perm true
-            npm i -g @commitlint/cli @commitlint/config-conventional
-      - run:
-          name: Validate commit message format
-          command: commitlint --from=HEAD~5 -V
-
+       
   docker-bake:
     executor: k911-docker-client
     environment:
@@ -88,6 +76,32 @@ jobs:
           name: Docker Buildx Bake all required images
           command: docker buildx bake --progress=plain $SERVICES
 
+  shellcheck:
+    docker:
+      - image: koalaman/shellcheck-alpine:stable
+    steps:
+      - checkout
+      - run:
+          name: Shellcheck sh scripts
+          command: shellcheck *.sh
+
+  validate-commit-message:
+    docker:
+      - image: node:lts-alpine
+    steps:
+      - checkout
+      - run:
+          name: Install git
+          command: apk add --no-cache git
+      - run:
+          name: Install commitlint
+          command: |-
+            npm config set unsafe-perm true
+            npm i -g @commitlint/cli @commitlint/config-conventional
+      - run:
+          name: Validate commit message format
+          command: commitlint --from=HEAD~5 -V
+
   releaser-dry-run:
     docker:
       - image: docker.io/k911/release-version-script:build-$CIRCLE_SHA1
@@ -125,18 +139,44 @@ jobs:
 
 workflows:
   version: 2.1
-  pull-request-checks:
+  pull-request-checks-trusted:
     when:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
       - test
-      - validate-commit-message
-      - shellcheck
+      - validate-commit-message:
+          <<: *filter-run-on-local-branches
+      - shellcheck:
+          <<: *filter-run-on-local-branches
       - docker-bake:
+          context: release-version-script-dockerhub
           requires:
             - validate-commit-message
             - shellcheck
+      - releaser-dry-run:
+          requires:
+            - docker-bake
+
+  pull-request-checks-untrusted:
+    when:
+      not:
+        equal: [ master, << pipeline.git.branch >> ]
+    jobs:
+      - test
+      - validate-commit-message:
+          <<: *filter-run-on-forked-pull-requests
+      - shellcheck:
+          <<: *filter-run-on-forked-pull-requests
+      - approve-docker-bake:
+          type: approval
+          requires:
+            - validate-commit-message
+            - shellcheck
+      - docker-bake:
+          context: release-version-script-dockerhub
+          requires:
+            - approve-docker-bake
       - releaser-dry-run:
           requires:
             - docker-bake
@@ -147,18 +187,18 @@ workflows:
       - validate-commit-message
       - shellcheck
       - docker-bake:
+          context: release-version-script-dockerhub
           requires:
             - validate-commit-message
             - shellcheck
       - releaser-dry-run:
           requires:
             - docker-bake
-      # - approve-release:
-      #     type: approval
-      #     requires:
-      #       - releaser-dry-run
-      - releaser:
-          context: swoole-bundle-releaser
+      - approve-release:
+          type: approval
           requires:
             - releaser-dry-run
-            # - approve-release
+      - releaser:
+          context: release-version-script-github
+          requires:
+            - approve-release
