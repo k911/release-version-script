@@ -27,7 +27,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Test
+          name: Test again
           command: echo -n "$DOCKER_HUB_USERNAME" | base64
       - run:
           name: Test 2
