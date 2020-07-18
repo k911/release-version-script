@@ -144,7 +144,10 @@ workflows:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
-      - test
+      - test:
+          context: release-version-script-dockerhub
+      - test:
+          context: release-version-script-github
       - validate-commit-message:
           <<: *filter-run-on-local-branches
       - shellcheck:
@@ -163,7 +166,10 @@ workflows:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
-      - test
+      - test:
+          context: release-version-script-dockerhub
+      - test:
+          context: release-version-script-github
       - validate-commit-message:
           <<: *filter-run-on-forked-pull-requests
       - shellcheck:
