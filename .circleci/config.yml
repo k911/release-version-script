@@ -21,6 +21,17 @@ jobs:
       - run:
           name: Shellcheck sh scripts
           command: shellcheck *.sh
+  test:
+    docker:
+      - image: alpine
+    steps:
+      - checkout
+      - run:
+          name: Test
+          command: echo "$DOCKER_HUB_USERNAME"
+      - run:
+          name: Test 2
+          command: echo "$GH_TOKEN"
 
   validate-commit-message:
     docker:
@@ -119,6 +130,7 @@ workflows:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
+      - test
       - validate-commit-message
       - shellcheck
       - docker-bake:
