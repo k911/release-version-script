@@ -19,4 +19,4 @@ docker-compose run --rm releaser
 
 ```
 
-Something by 3-rd party user
+Something by 3-rd party user, 2nd edit
