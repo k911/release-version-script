@@ -130,7 +130,8 @@ workflows:
       not:
         equal: [ master, << pipeline.git.branch >> ]
     jobs:
-      - test
+      - test:
+          context: swoole-bundle-releaser
       - validate-commit-message
       - shellcheck
       - docker-bake:
